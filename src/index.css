@@ -1,0 +1,36 @@
+@import "tailwindcss";
+
+@theme {
+  --color-sflive-bg: #0F172A;
+  --color-sflive-card: #1E293B;
+  --color-sflive-primary: #00D4FF;
+  --color-sflive-secondary: #6366F1;
+  --color-sflive-text: #FFFFFF;
+  --color-sflive-muted: #94A3B8;
+}
+
+@layer utilities {
+  .glass {
+    @apply bg-sflive-card/60 backdrop-blur-md border border-white/5;
+  }
+  
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .hide-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  
+  .mask-edges {
+    mask-image: linear-gradient(to right, transparent, black 4%, black 96%, transparent);
+  }
+}
+
+body {
+  @apply bg-sflive-bg text-sflive-text overflow-x-hidden antialiased;
+}
+
+* {
+  @apply border-white/10;
+}
