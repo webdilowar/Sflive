@@ -23,8 +23,28 @@ interface AppContextType {
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
+const ensureSecureUrl = (url: string): string => {
+  if (!url) return url;
+  if (url.startsWith('/api/stream') || url.startsWith('http://localhost:3000/api/stream')) {
+    return url;
+  }
+  let targetUrl = url;
+  if (url.startsWith('https://cors-proxy.cooks.fyi/')) {
+    targetUrl = url.replace('https://cors-proxy.cooks.fyi/', '');
+  }
+  if (targetUrl.startsWith('http://') || targetUrl.startsWith('https://')) {
+    return `/api/stream?url=${encodeURIComponent(targetUrl)}`;
+  }
+  return targetUrl;
+};
+
+const secureDefaultChannels = defaultChannels.map(c => ({
+  ...c,
+  url: ensureSecureUrl(c.url)
+}));
+
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [channels, setChannels] = useState<Channel[]>(defaultChannels);
+  const [channels, setChannels] = useState<Channel[]>(secureDefaultChannels);
   const [currentChannel, setCurrentChannel] = useState<Channel | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -71,12 +91,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
       const data = await response.json();
       if (data.success && Array.isArray(data.channels) && data.channels.length > 0) {
-        setChannels(data.channels);
+        const secureChannels = data.channels.map((c: Channel) => ({
+          ...c,
+          url: ensureSecureUrl(c.url)
+        }));
+        setChannels(secureChannels);
         setActivePlaylistUrl(url);
         localStorage.setItem('sflive-playlist-url', url);
         // Automatically select the first channel if none or invalid is selected
-        if (data.channels.length > 0) {
-          setCurrentChannel(data.channels[0]);
+        if (secureChannels.length > 0) {
+          setCurrentChannel(secureChannels[0]);
         }
         setIsLoadingPlaylist(false);
         return true;

@@ -150,6 +150,78 @@ async function startServer() {
     }
   });
 
+  // Endpoint to proxy live streams and prevent mixed content / CORS blocks in the browser
+  app.get("/api/stream", async (req, res) => {
+    const streamUrl = req.query.url as string;
+    if (!streamUrl) {
+      return res.status(400).send("Stream URL is required");
+    }
+
+    try {
+      const headers: Record<string, string> = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+      };
+
+      // Forward client Range headers to support seek/buffer in video player
+      if (req.headers.range) {
+        headers["Range"] = req.headers.range;
+      }
+
+      const controller = new AbortController();
+      req.on("close", () => {
+        controller.abort();
+      });
+
+      const response = await fetch(streamUrl, {
+        signal: controller.signal,
+        headers
+      });
+
+      // Forward response status code (e.g. 200 OK or 206 Partial Content)
+      res.status(response.status);
+
+      // Forward important response headers
+      const headersToForward = [
+        "content-type",
+        "content-length",
+        "content-range",
+        "accept-ranges",
+        "cache-control",
+        "expires"
+      ];
+
+      headersToForward.forEach(headerName => {
+        const value = response.headers.get(headerName);
+        if (value) {
+          res.setHeader(headerName, value);
+        }
+      });
+
+      // Default content-type for media streaming if missing
+      if (!res.getHeader("content-type")) {
+        res.setHeader("content-type", "video/mp2t");
+      }
+
+      // Stream the response body
+      if (response.body) {
+        const { Readable } = await import("stream");
+        const nodeStream = Readable.fromWeb(response.body as any);
+        nodeStream.pipe(res);
+      } else {
+        res.end();
+      }
+    } catch (error: any) {
+      if (error.name === "AbortError") {
+        // Safe to ignore client disconnects
+        return;
+      }
+      console.error(`Stream proxy error for ${streamUrl}:`, error.message);
+      if (!res.headersSent) {
+        res.status(500).send("Streaming error");
+      }
+    }
+  });
+
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
