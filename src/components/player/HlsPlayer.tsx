@@ -230,13 +230,7 @@ export const HlsPlayer: React.FC<HlsPlayerProps> = ({ channel }) => {
         </div>
       )}
 
-      {/* Live Badge Top Right */}
-      <div className="absolute top-4 right-4 z-10 flex items-center gap-2">
-        <div className="px-2.5 py-1 rounded bg-red-600/90 backdrop-blur-sm text-xs font-bold uppercase tracking-wider text-white shadow-lg flex items-center gap-1.5">
-          <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
-          LIVE
-        </div>
-      </div>
+
 
       {/* Modern Controls Interface */}
       <div 
