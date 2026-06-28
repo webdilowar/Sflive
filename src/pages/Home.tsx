@@ -1,6 +1,5 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { channels } from '../data/channels';
 import { Play, TrendingUp, Star, Tv } from 'lucide-react';
 import { useApp } from '../store/AppContext';
 import { Channel } from '../types';
@@ -8,7 +7,7 @@ import { ImageWithFallback } from '../components/ui/ImageWithFallback';
 
 export const Home = () => {
   const navigate = useNavigate();
-  const { setCurrentChannel } = useApp();
+  const { setCurrentChannel, channels } = useApp();
 
   const handlePlayChannel = (channel: Channel) => {
     setCurrentChannel(channel);

@@ -1,6 +1,5 @@
 import React, { useMemo } from 'react';
 import { useApp } from '../store/AppContext';
-import { channels } from '../data/channels';
 import { HlsPlayer } from '../components/player/HlsPlayer';
 import { Heart, Search, PlayCircle, Tv } from 'lucide-react';
 import { cn } from '../lib/utils';
@@ -8,7 +7,7 @@ import { Channel } from '../types';
 import { ImageWithFallback } from '../components/ui/ImageWithFallback';
 
 export const LiveTV = () => {
-  const { currentChannel, setCurrentChannel, favorites, toggleFavorite, isFavorite, searchQuery } = useApp();
+  const { currentChannel, setCurrentChannel, favorites, toggleFavorite, isFavorite, searchQuery, channels } = useApp();
 
   // If no channel is selected, select the first one by default
   React.useEffect(() => {

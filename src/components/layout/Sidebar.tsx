@@ -31,7 +31,7 @@ const NAV_ITEMS = [
 ];
 
 export const Sidebar = () => {
-  const { sidebarOpen, setSidebarOpen } = useApp();
+  const { sidebarOpen, setSidebarOpen, setSettingsOpen } = useApp();
 
   return (
     <>
@@ -91,7 +91,13 @@ export const Sidebar = () => {
 
         {/* Bottom Section */}
         <div className="p-4 border-t border-white/5">
-          <button className="flex items-center gap-3 px-4 py-3 w-full rounded-xl transition-all duration-200 text-sflive-muted hover:bg-white/5 hover:text-white text-sm font-medium">
+          <button 
+            onClick={() => {
+              setSettingsOpen(true);
+              setSidebarOpen(false); // Close mobile sidebar if open
+            }}
+            className="flex items-center gap-3 px-4 py-3 w-full rounded-xl transition-all duration-200 text-sflive-muted hover:bg-white/5 hover:text-white text-sm font-medium cursor-pointer"
+          >
             <Settings className="w-5 h-5" />
             Settings
           </button>

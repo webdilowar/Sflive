@@ -1,6 +1,5 @@
 import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { channels } from '../data/channels';
 import { useApp } from '../store/AppContext';
 import { Play } from 'lucide-react';
 import { Channel } from '../types';
@@ -9,7 +8,7 @@ import { ImageWithFallback } from '../components/ui/ImageWithFallback';
 export const CategoryPage = ({ isFavorites = false }: { isFavorites?: boolean }) => {
   const { categoryId } = useParams<{ categoryId: string }>();
   const navigate = useNavigate();
-  const { setCurrentChannel, favorites } = useApp();
+  const { setCurrentChannel, favorites, channels } = useApp();
 
   let filteredChannels: Channel[] = [];
   let title = '';
