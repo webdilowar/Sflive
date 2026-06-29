@@ -191,12 +191,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       try {
         const response = await fetch(`/api/playlist?url=${encodeURIComponent(url)}`);
         
-        if (response.status === 404) {
+        if (!response.ok) {
           throw new Error('SERVER_NOT_AVAILABLE');
         }
 
-        if (!response.ok) {
-          throw new Error(`Server responded with status ${response.status}`);
+        const contentType = response.headers.get('content-type');
+        if (contentType && !contentType.includes('application/json')) {
+          throw new Error('SERVER_NOT_AVAILABLE');
         }
 
         const data = await response.json();
@@ -218,22 +219,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           throw new Error(data.error || 'No valid channels found in this playlist');
         }
       } catch (err: any) {
-        // If server is not found (404, or network fetch fail on static page), fall back to client-side
-        if (
-          err.message === 'SERVER_NOT_AVAILABLE' || 
-          err.message.includes('Failed to fetch') || 
-          err.message.includes('NetworkError') ||
-          err.message.includes('network error')
-        ) {
-          console.warn('Backend server not detected (running on static pages like GitHub). Switching to pure client-side mode.');
-          setUseServerApi(false);
-          // Continue to the client-side parsing block below
-        } else {
-          console.error('Server playlist load failed:', err);
-          setPlaylistError(err.message || 'Failed to load playlist');
-          setIsLoadingPlaylist(false);
-          return false;
-        }
+        console.warn('Backend server API failed or not available, falling back to client-side:', err.message);
+        setUseServerApi(false);
+        // Continue to the client-side parsing block below
       }
     }
 
