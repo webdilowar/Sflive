@@ -9,6 +9,14 @@ export interface Channel {
   description: string;
 }
 
+export interface Playlist {
+  id: string;
+  name: string;
+  url?: string;
+  channels: Channel[];
+  isUploadedFile?: boolean;
+}
+
 export type Category = 
   | 'All'
   | 'News'

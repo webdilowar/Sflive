@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { Channel } from '../types';
+import { Channel, Playlist } from '../types';
 import { channels as defaultChannels } from '../data/channels';
 
 interface AppContextType {
@@ -19,6 +19,14 @@ interface AppContextType {
   playlistError: string | null;
   settingsOpen: boolean;
   setSettingsOpen: (open: boolean) => void;
+  
+  // Multiple playlist support
+  playlists: Playlist[];
+  activePlaylistId: string;
+  addPlaylistByUrl: (name: string, url: string) => Promise<boolean>;
+  addPlaylistByFile: (name: string, fileContent: string) => Promise<boolean>;
+  deletePlaylist: (id: string) => void;
+  selectPlaylist: (id: string) => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -144,14 +152,79 @@ const ensureSecureUrl = (url: string, useServerApi: boolean): string => {
 };
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [channels, setChannels] = useState<Channel[]>(defaultChannels);
-  const [currentChannel, setCurrentChannel] = useState<Channel | null>(null);
+  const [playlists, setPlaylists] = useState<Playlist[]>(() => {
+    const saved = localStorage.getItem('sflive-playlists');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch {
+        return [];
+      }
+    }
+    return [];
+  });
+
+  const [activePlaylistId, setActivePlaylistId] = useState(() => {
+    return localStorage.getItem('sflive-active-playlist-id') || 'default';
+  });
+
+  const [channels, setChannels] = useState<Channel[]>(() => {
+    const activeId = localStorage.getItem('sflive-active-playlist-id') || 'default';
+    if (activeId === 'default') {
+      return defaultChannels;
+    }
+    const saved = localStorage.getItem('sflive-playlists');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved) as Playlist[];
+        const found = parsed.find(p => p.id === activeId);
+        if (found && found.channels) {
+          return found.channels;
+        }
+      } catch {}
+    }
+    return defaultChannels;
+  });
+
+  const [currentChannel, setCurrentChannel] = useState<Channel | null>(() => {
+    const activeId = localStorage.getItem('sflive-active-playlist-id') || 'default';
+    let initialChannels = defaultChannels;
+    if (activeId !== 'default') {
+      const saved = localStorage.getItem('sflive-playlists');
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved) as Playlist[];
+          const found = parsed.find(p => p.id === activeId);
+          if (found && found.channels) {
+            initialChannels = found.channels;
+          }
+        } catch {}
+      }
+    }
+    return initialChannels.length > 0 ? initialChannels[0] : null;
+  });
+
   const [searchQuery, setSearchQuery] = useState('');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [activePlaylistUrl, setActivePlaylistUrl] = useState(() => {
-    return localStorage.getItem('sflive-playlist-url') || 'https://go.skym3u.top/2k8o.m3u';
+    const activeId = localStorage.getItem('sflive-active-playlist-id') || 'default';
+    if (activeId === 'default') {
+      return 'https://go.skym3u.top/2k8o.m3u';
+    }
+    const saved = localStorage.getItem('sflive-playlists');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved) as Playlist[];
+        const found = parsed.find(p => p.id === activeId);
+        if (found && found.url) {
+          return found.url;
+        }
+      } catch {}
+    }
+    return '';
   });
+
   const [isLoadingPlaylist, setIsLoadingPlaylist] = useState(false);
   const [playlistError, setPlaylistError] = useState<string | null>(null);
   const [useServerApi, setUseServerApi] = useState(true);
@@ -182,15 +255,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const isFavorite = (channelId: string) => favorites.includes(channelId);
 
-  const loadPlaylist = async (url: string): Promise<boolean> => {
+  const addPlaylistByUrl = async (name: string, url: string): Promise<boolean> => {
     setIsLoadingPlaylist(true);
     setPlaylistError(null);
+    let parsedChannels: Channel[] = [];
 
     // 1. Try server-side proxy API first if enabled
     if (useServerApi) {
       try {
         const response = await fetch(`/api/playlist?url=${encodeURIComponent(url)}`);
-        
         if (!response.ok) {
           throw new Error('SERVER_NOT_AVAILABLE');
         }
@@ -202,85 +275,201 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
         const data = await response.json();
         if (data.success && Array.isArray(data.channels) && data.channels.length > 0) {
-          const secureChannels = data.channels.map((c: Channel) => ({
+          parsedChannels = data.channels.map((c: Channel) => ({
             ...c,
             url: ensureSecureUrl(c.url, true)
           }));
-          setChannels(secureChannels);
-          setActivePlaylistUrl(url);
-          localStorage.setItem('sflive-playlist-url', url);
-          
-          if (secureChannels.length > 0) {
-            setCurrentChannel(secureChannels[0]);
-          }
-          setIsLoadingPlaylist(false);
-          return true;
         } else {
           throw new Error(data.error || 'No valid channels found in this playlist');
         }
       } catch (err: any) {
-        console.warn('Backend server API failed or not available, falling back to client-side:', err.message);
+        console.warn('Backend server API failed, falling back to client-side:', err.message);
         setUseServerApi(false);
-        // Continue to the client-side parsing block below
       }
     }
 
     // 2. Client-side M3U loading and parsing fallback
-    try {
-      console.log('Fetching playlist directly via client browser...', url);
-      let text = '';
+    if (parsedChannels.length === 0) {
       try {
-        const response = await fetch(url);
-        if (!response.ok) {
-          throw new Error(`Direct fetch failed: ${response.statusText}`);
+        console.log('Fetching playlist directly via client browser...', url);
+        let text = '';
+        try {
+          const response = await fetch(url);
+          if (!response.ok) {
+            throw new Error(`Direct fetch failed: ${response.statusText}`);
+          }
+          text = await response.text();
+        } catch (directErr: any) {
+          console.warn('Direct fetch blocked by CORS. Attempting public CORS proxy...', directErr);
+          const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
+          const response = await fetch(proxyUrl);
+          if (!response.ok) {
+            throw new Error(`CORS proxy fetch failed: ${response.statusText}`);
+          }
+          text = await response.text();
         }
-        text = await response.text();
-      } catch (directErr: any) {
-        console.warn('Direct fetch blocked by CORS. Attempting public CORS proxy...', directErr);
-        // Fallback to allorigins.win public proxy to bypass CORS
-        const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
-        const response = await fetch(proxyUrl);
-        if (!response.ok) {
-          throw new Error(`CORS proxy fetch failed: ${response.statusText}`);
+
+        if (!text || !text.includes('#EXTM3U')) {
+          throw new Error('Invalid playlist format. The playlist must start with #EXTM3U');
         }
-        text = await response.text();
+
+        const parsed = parseM3U(text);
+        if (parsed.length === 0) {
+          throw new Error('No channels could be parsed from this playlist.');
+        }
+
+        parsedChannels = parsed.map((c: Channel) => ({
+          ...c,
+          url: ensureSecureUrl(c.url, false)
+        }));
+      } catch (err: any) {
+        console.error('Client-side playlist load/parse error:', err);
+        setPlaylistError(err.message || 'Failed to load playlist');
+        setIsLoadingPlaylist(false);
+        return false;
       }
+    }
 
-      if (!text || !text.includes('#EXTM3U')) {
-        throw new Error('Invalid playlist format. The playlist must start with #EXTM3U');
-      }
+    if (parsedChannels.length > 0) {
+      const newPlaylist: Playlist = {
+        id: `playlist_${Date.now()}`,
+        name: name.trim() || 'Custom Playlist',
+        url,
+        channels: parsedChannels
+      };
 
-      const parsed = parseM3U(text);
-      if (parsed.length === 0) {
-        throw new Error('No channels could be parsed from this playlist.');
-      }
+      const updatedPlaylists = [...playlists, newPlaylist];
+      setPlaylists(updatedPlaylists);
+      localStorage.setItem('sflive-playlists', JSON.stringify(updatedPlaylists));
 
-      const clientChannels = parsed.map((c: Channel) => ({
-        ...c,
-        url: ensureSecureUrl(c.url, false) // keep original URLs directly (no server proxy)
-      }));
-
-      setChannels(clientChannels);
+      setChannels(newPlaylist.channels);
+      setActivePlaylistId(newPlaylist.id);
+      localStorage.setItem('sflive-active-playlist-id', newPlaylist.id);
       setActivePlaylistUrl(url);
       localStorage.setItem('sflive-playlist-url', url);
 
-      if (clientChannels.length > 0) {
-        setCurrentChannel(clientChannels[0]);
+      if (newPlaylist.channels.length > 0) {
+        setCurrentChannel(newPlaylist.channels[0]);
+      }
+      setIsLoadingPlaylist(false);
+      return true;
+    }
+
+    setIsLoadingPlaylist(false);
+    return false;
+  };
+
+  const addPlaylistByFile = async (name: string, fileContent: string): Promise<boolean> => {
+    setIsLoadingPlaylist(true);
+    setPlaylistError(null);
+
+    try {
+      if (!fileContent || !fileContent.includes('#EXTM3U')) {
+        throw new Error('Invalid playlist format. The file must be a valid M3U file starting with #EXTM3U');
+      }
+
+      const parsed = parseM3U(fileContent);
+      if (parsed.length === 0) {
+        throw new Error('No channels could be parsed from this file.');
+      }
+
+      const parsedChannels = parsed.map((c: Channel) => ({
+        ...c,
+        url: ensureSecureUrl(c.url, false)
+      }));
+
+      const newPlaylist: Playlist = {
+        id: `playlist_${Date.now()}`,
+        name: name.trim() || 'Local Upload Playlist',
+        channels: parsedChannels,
+        isUploadedFile: true
+      };
+
+      const updatedPlaylists = [...playlists, newPlaylist];
+      setPlaylists(updatedPlaylists);
+      localStorage.setItem('sflive-playlists', JSON.stringify(updatedPlaylists));
+
+      setChannels(newPlaylist.channels);
+      setActivePlaylistId(newPlaylist.id);
+      localStorage.setItem('sflive-active-playlist-id', newPlaylist.id);
+      setActivePlaylistUrl('');
+      localStorage.removeItem('sflive-playlist-url');
+
+      if (newPlaylist.channels.length > 0) {
+        setCurrentChannel(newPlaylist.channels[0]);
       }
       setIsLoadingPlaylist(false);
       return true;
     } catch (err: any) {
-      console.error('Client-side playlist load/parse error:', err);
-      setPlaylistError(err.message || 'Failed to load playlist in static client mode');
+      console.error('File parsing error:', err);
+      setPlaylistError(err.message || 'Failed to parse M3U file');
       setIsLoadingPlaylist(false);
       return false;
     }
   };
 
-  // Auto-load playlist on startup
-  useEffect(() => {
-    loadPlaylist(activePlaylistUrl);
-  }, []);
+  const deletePlaylist = (id: string) => {
+    if (id === 'default') return;
+
+    const updatedPlaylists = playlists.filter(p => p.id !== id);
+    setPlaylists(updatedPlaylists);
+    localStorage.setItem('sflive-playlists', JSON.stringify(updatedPlaylists));
+
+    if (activePlaylistId === id) {
+      setChannels(defaultChannels);
+      setActivePlaylistId('default');
+      localStorage.setItem('sflive-active-playlist-id', 'default');
+      setActivePlaylistUrl('https://go.skym3u.top/2k8o.m3u');
+      localStorage.setItem('sflive-playlist-url', 'https://go.skym3u.top/2k8o.m3u');
+      if (defaultChannels.length > 0) {
+        setCurrentChannel(defaultChannels[0]);
+      }
+    }
+  };
+
+  const selectPlaylist = (id: string) => {
+    if (id === 'default') {
+      setChannels(defaultChannels);
+      setActivePlaylistId('default');
+      localStorage.setItem('sflive-active-playlist-id', 'default');
+      setActivePlaylistUrl('https://go.skym3u.top/2k8o.m3u');
+      localStorage.setItem('sflive-playlist-url', 'https://go.skym3u.top/2k8o.m3u');
+      if (defaultChannels.length > 0) {
+        setCurrentChannel(defaultChannels[0]);
+      }
+      return;
+    }
+
+    const playlist = playlists.find(p => p.id === id);
+    if (playlist) {
+      setChannels(playlist.channels);
+      setActivePlaylistId(playlist.id);
+      localStorage.setItem('sflive-active-playlist-id', playlist.id);
+      setActivePlaylistUrl(playlist.url || '');
+      if (playlist.url) {
+        localStorage.setItem('sflive-playlist-url', playlist.url);
+      } else {
+        localStorage.removeItem('sflive-playlist-url');
+      }
+      if (playlist.channels.length > 0) {
+        setCurrentChannel(playlist.channels[0]);
+      }
+    }
+  };
+
+  const loadPlaylist = async (url: string): Promise<boolean> => {
+    if (url === 'https://go.skym3u.top/2k8o.m3u') {
+      selectPlaylist('default');
+      return true;
+    }
+    const found = playlists.find(p => p.url === url);
+    if (found) {
+      selectPlaylist(found.id);
+      return true;
+    }
+    const name = url.split('/').pop()?.replace('.m3u', '') || 'Loaded Playlist';
+    return addPlaylistByUrl(name, url);
+  };
 
   return (
     <AppContext.Provider
@@ -301,6 +490,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         playlistError,
         settingsOpen,
         setSettingsOpen,
+        playlists,
+        activePlaylistId,
+        addPlaylistByUrl,
+        addPlaylistByFile,
+        deletePlaylist,
+        selectPlaylist,
       }}
     >
       {children}

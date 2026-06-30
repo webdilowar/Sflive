@@ -31,7 +31,11 @@ const NAV_ITEMS = [
 ];
 
 export const Sidebar = () => {
-  const { sidebarOpen, setSidebarOpen, setSettingsOpen } = useApp();
+  const { sidebarOpen, setSidebarOpen, setSettingsOpen, playlists, activePlaylistId, channels } = useApp();
+
+  const activePlaylistName = activePlaylistId === 'default'
+    ? 'SFLIVE Default'
+    : playlists.find(p => p.id === activePlaylistId)?.name || 'Custom Playlist';
 
   return (
     <>
@@ -90,7 +94,15 @@ export const Sidebar = () => {
         </nav>
 
         {/* Bottom Section */}
-        <div className="p-4 border-t border-white/5">
+        <div className="p-4 border-t border-white/5 space-y-3">
+          <div className="px-4 py-2.5 rounded-xl bg-white/2 border border-white/5 flex flex-col gap-1">
+            <span className="text-[10px] uppercase tracking-wider text-sflive-primary font-bold">Loaded Playlist</span>
+            <span className="text-xs font-semibold text-white truncate max-w-full" title={activePlaylistName}>
+              {activePlaylistName}
+            </span>
+            <span className="text-[10px] text-sflive-muted">{channels.length} Channels</span>
+          </div>
+
           <button 
             onClick={() => {
               setSettingsOpen(true);
