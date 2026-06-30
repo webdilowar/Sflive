@@ -213,6 +213,56 @@ export const SettingsModal = () => {
                   )}
                 </button>
 
+                {/* Premium Sports Selection */}
+                <button
+                  type="button"
+                  onClick={() => selectPlaylist('sports_265')}
+                  disabled={isLoadingPlaylist}
+                  className={`w-full text-left p-3 rounded-xl border transition-all duration-200 flex items-center justify-between cursor-pointer ${
+                    activePlaylistId === 'sports_265'
+                      ? 'bg-sflive-primary/15 border-sflive-primary/40 text-white font-semibold'
+                      : 'bg-white/2 border-white/5 text-sflive-muted hover:bg-white/5 hover:border-white/10'
+                  }`}
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <Globe className={`w-5 h-5 shrink-0 ${activePlaylistId === 'sports_265' ? 'text-sflive-primary' : 'text-sflive-muted'}`} />
+                    <div className="truncate">
+                      <div className="font-semibold text-sm text-white">Sky Sports Selection</div>
+                      <div className="text-xs text-sflive-muted mt-0.5">Preset • 265 Channels</div>
+                    </div>
+                  </div>
+                  {activePlaylistId === 'sports_265' && (
+                    <span className="text-[10px] bg-sflive-primary/20 text-sflive-primary px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider shrink-0">
+                      Active
+                    </span>
+                  )}
+                </button>
+
+                {/* IPTV-Org Bengali */}
+                <button
+                  type="button"
+                  onClick={() => selectPlaylist('ben_102')}
+                  disabled={isLoadingPlaylist}
+                  className={`w-full text-left p-3 rounded-xl border transition-all duration-200 flex items-center justify-between cursor-pointer ${
+                    activePlaylistId === 'ben_102'
+                      ? 'bg-sflive-primary/15 border-sflive-primary/40 text-white font-semibold'
+                      : 'bg-white/2 border-white/5 text-sflive-muted hover:bg-white/5 hover:border-white/10'
+                  }`}
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <Globe className={`w-5 h-5 shrink-0 ${activePlaylistId === 'ben_102' ? 'text-sflive-primary' : 'text-sflive-muted'}`} />
+                    <div className="truncate">
+                      <div className="font-semibold text-sm text-white">IPTV-Org Bengali</div>
+                      <div className="text-xs text-sflive-muted mt-0.5">Dynamic • 102 Channels</div>
+                    </div>
+                  </div>
+                  {activePlaylistId === 'ben_102' && (
+                    <span className="text-[10px] bg-sflive-primary/20 text-sflive-primary px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider shrink-0">
+                      Active
+                    </span>
+                  )}
+                </button>
+
                 {/* Custom Playlists */}
                 {playlists.map((pl) => (
                   <div

@@ -177,6 +177,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (activeId === 'bd_89') {
       return defaultChannels;
     }
+    if (activeId === 'sports_265') {
+      return premiumChannels.filter(c => c.category === 'Sports');
+    }
+    if (activeId === 'ben_102') {
+      return []; // Fetched dynamically in useEffect
+    }
     const saved = localStorage.getItem('sflive-playlists');
     if (saved) {
       try {
@@ -195,6 +201,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     let initialChannels = premiumChannels;
     if (activeId === 'bd_89') {
       initialChannels = defaultChannels;
+    } else if (activeId === 'sports_265') {
+      initialChannels = premiumChannels.filter(c => c.category === 'Sports');
+    } else if (activeId === 'ben_102') {
+      initialChannels = [];
     } else if (activeId !== 'default') {
       const saved = localStorage.getItem('sflive-playlists');
       if (saved) {
@@ -220,6 +230,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
     if (activeId === 'bd_89') {
       return 'internal://bd-89';
+    }
+    if (activeId === 'sports_265') {
+      return 'https://go.skym3u.top/2k8o.m3u#sports';
+    }
+    if (activeId === 'ben_102') {
+      return 'https://iptv-org.github.io/iptv/languages/ben.m3u';
     }
     const saved = localStorage.getItem('sflive-playlists');
     if (saved) {
@@ -253,6 +269,36 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   useEffect(() => {
     localStorage.setItem('sflive-favorites', JSON.stringify(favorites));
   }, [favorites]);
+
+  useEffect(() => {
+    if (activePlaylistId === 'ben_102' && channels.length === 0) {
+      setIsLoadingPlaylist(true);
+      setPlaylistError(null);
+      const url = 'https://iptv-org.github.io/iptv/languages/ben.m3u';
+      fetch(`/api/playlist?url=${encodeURIComponent(url)}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.success && Array.isArray(data.channels)) {
+            const secureChannels = data.channels.map((c: any) => ({
+              ...c,
+              url: ensureSecureUrl(c.url, true)
+            }));
+            setChannels(secureChannels);
+            if (secureChannels.length > 0) {
+              setCurrentChannel(secureChannels[0]);
+            }
+          } else {
+            throw new Error(data.error || 'Failed to parse channels');
+          }
+          setIsLoadingPlaylist(false);
+        })
+        .catch(err => {
+          console.error('Error loading initial Bengali playlist:', err);
+          setPlaylistError(err.message || 'Failed to load Bengali playlist');
+          setIsLoadingPlaylist(false);
+        });
+    }
+  }, [activePlaylistId]);
 
   const toggleFavorite = (channelId: string) => {
     setFavorites((prev) =>
@@ -418,7 +464,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const deletePlaylist = (id: string) => {
-    if (id === 'default' || id === 'bd_89') return;
+    if (id === 'default' || id === 'bd_89' || id === 'sports_265' || id === 'ben_102') return;
 
     const updatedPlaylists = playlists.filter(p => p.id !== id);
     setPlaylists(updatedPlaylists);
@@ -461,6 +507,52 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return;
     }
 
+    if (id === 'sports_265') {
+      const sportsChannels = premiumChannels.filter(c => c.category === 'Sports');
+      setChannels(sportsChannels);
+      setActivePlaylistId('sports_265');
+      localStorage.setItem('sflive-active-playlist-id', 'sports_265');
+      setActivePlaylistUrl('https://go.skym3u.top/2k8o.m3u#sports');
+      localStorage.setItem('sflive-playlist-url', 'https://go.skym3u.top/2k8o.m3u#sports');
+      if (sportsChannels.length > 0) {
+        setCurrentChannel(sportsChannels[0]);
+      }
+      return;
+    }
+
+    if (id === 'ben_102') {
+      setIsLoadingPlaylist(true);
+      setPlaylistError(null);
+      const url = 'https://iptv-org.github.io/iptv/languages/ben.m3u';
+      fetch(`/api/playlist?url=${encodeURIComponent(url)}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.success && Array.isArray(data.channels)) {
+            const secureChannels = data.channels.map((c: any) => ({
+              ...c,
+              url: ensureSecureUrl(c.url, true)
+            }));
+            setChannels(secureChannels);
+            setActivePlaylistId('ben_102');
+            localStorage.setItem('sflive-active-playlist-id', 'ben_102');
+            setActivePlaylistUrl(url);
+            localStorage.setItem('sflive-playlist-url', url);
+            if (secureChannels.length > 0) {
+              setCurrentChannel(secureChannels[0]);
+            }
+          } else {
+            throw new Error(data.error || 'Failed to parse channels');
+          }
+          setIsLoadingPlaylist(false);
+        })
+        .catch(err => {
+          console.error(err);
+          setPlaylistError(err.message || 'Failed to load Bengali playlist');
+          setIsLoadingPlaylist(false);
+        });
+      return;
+    }
+
     const playlist = playlists.find(p => p.id === id);
     if (playlist) {
       setChannels(playlist.channels);
@@ -485,6 +577,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
     if (url === 'internal://bd-89') {
       selectPlaylist('bd_89');
+      return true;
+    }
+    if (url === 'https://go.skym3u.top/2k8o.m3u#sports') {
+      selectPlaylist('sports_265');
+      return true;
+    }
+    if (url === 'https://iptv-org.github.io/iptv/languages/ben.m3u') {
+      selectPlaylist('ben_102');
       return true;
     }
     const found = playlists.find(p => p.url === url);

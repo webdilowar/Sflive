@@ -21,7 +21,11 @@ export const Header = () => {
     ? 'Sky IPTV Premium'
     : activePlaylistId === 'bd_89'
       ? 'SFLIVE Default'
-      : playlists.find(p => p.id === activePlaylistId)?.name || 'Custom Playlist';
+      : activePlaylistId === 'sports_265'
+        ? 'Sky Sports Selection'
+        : activePlaylistId === 'ben_102'
+          ? 'IPTV-Org Bengali'
+          : playlists.find(p => p.id === activePlaylistId)?.name || 'Custom Playlist';
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchQuery(e.target.value);
@@ -101,7 +105,7 @@ export const Header = () => {
                   )}
                 </button>
 
-                {/* SFLIVE Default (89 channels) */}
+                 {/* SFLIVE Default (89 channels) */}
                 <button
                   onClick={() => {
                     selectPlaylist('bd_89');
@@ -121,6 +125,54 @@ export const Header = () => {
                     </div>
                   </div>
                   {activePlaylistId === 'bd_89' && (
+                    <span className="w-1.5 h-1.5 rounded-full bg-sflive-primary shrink-0"></span>
+                  )}
+                </button>
+
+                {/* Sky Sports Selection (265 channels) */}
+                <button
+                  onClick={() => {
+                    selectPlaylist('sports_265');
+                    setDropdownOpen(false);
+                  }}
+                  className={`w-full flex items-center justify-between p-2.5 rounded-xl transition-all duration-200 text-left cursor-pointer ${
+                    activePlaylistId === 'sports_265'
+                      ? 'bg-sflive-primary/20 text-white font-semibold'
+                      : 'text-sflive-muted hover:bg-white/5 hover:text-white'
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <Globe className={`w-4 h-4 shrink-0 ${activePlaylistId === 'sports_265' ? 'text-sflive-primary' : 'text-sflive-muted'}`} />
+                    <div className="truncate">
+                      <div className="text-xs text-white font-medium">Sky Sports Selection</div>
+                      <div className="text-[10px] text-sflive-muted mt-0.5">Preset • 265 Channels</div>
+                    </div>
+                  </div>
+                  {activePlaylistId === 'sports_265' && (
+                    <span className="w-1.5 h-1.5 rounded-full bg-sflive-primary shrink-0"></span>
+                  )}
+                </button>
+
+                {/* IPTV-Org Bengali (102 channels) */}
+                <button
+                  onClick={() => {
+                    selectPlaylist('ben_102');
+                    setDropdownOpen(false);
+                  }}
+                  className={`w-full flex items-center justify-between p-2.5 rounded-xl transition-all duration-200 text-left cursor-pointer ${
+                    activePlaylistId === 'ben_102'
+                      ? 'bg-sflive-primary/20 text-white font-semibold'
+                      : 'text-sflive-muted hover:bg-white/5 hover:text-white'
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <Globe className={`w-4 h-4 shrink-0 ${activePlaylistId === 'ben_102' ? 'text-sflive-primary' : 'text-sflive-muted'}`} />
+                    <div className="truncate">
+                      <div className="text-xs text-white font-medium">IPTV-Org Bengali</div>
+                      <div className="text-[10px] text-sflive-muted mt-0.5">Dynamic • 102 Channels</div>
+                    </div>
+                  </div>
+                  {activePlaylistId === 'ben_102' && (
                     <span className="w-1.5 h-1.5 rounded-full bg-sflive-primary shrink-0"></span>
                   )}
                 </button>

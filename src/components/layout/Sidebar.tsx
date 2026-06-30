@@ -37,7 +37,11 @@ export const Sidebar = () => {
     ? 'Sky IPTV Premium'
     : activePlaylistId === 'bd_89'
       ? 'SFLIVE Default'
-      : playlists.find(p => p.id === activePlaylistId)?.name || 'Custom Playlist';
+      : activePlaylistId === 'sports_265'
+        ? 'Sky Sports Selection'
+        : activePlaylistId === 'ben_102'
+          ? 'IPTV-Org Bengali'
+          : playlists.find(p => p.id === activePlaylistId)?.name || 'Custom Playlist';
 
   return (
     <>
