@@ -16,8 +16,42 @@ export const CategoryPage = ({ isFavorites = false }: { isFavorites?: boolean })
   if (isFavorites) {
     filteredChannels = channels.filter(c => favorites.includes(c.id));
     title = 'Your Favorites';
-  } else {
-    filteredChannels = channels.filter(c => c.category === categoryId);
+  } else if (categoryId) {
+    const target = categoryId.trim().toLowerCase();
+    filteredChannels = channels.filter(c => {
+      if (!c.category) return false;
+      const cat = c.category.trim().toLowerCase();
+      
+      // Exact or direct subcategory match (e.g. "Sports HD" or "Live Sports" matches "sports")
+      if (cat === target || cat.includes(target) || target.includes(cat)) {
+        return true;
+      }
+      
+      // Special semantic mappings for common IPTV category names
+      if (target === 'sports' && (cat.includes('sport') || cat.includes('tvsport') || cat.includes('tropy'))) {
+        return true;
+      }
+      if (target === 'news' && (cat.includes('news') || cat.includes('khabor') || cat.includes('shongbad'))) {
+        return true;
+      }
+      if (target === 'movies' && (cat.includes('movie') || cat.includes('cinema') || cat.includes('film') || cat.includes('action') || cat.includes('jalsha movies'))) {
+        return true;
+      }
+      if (target === 'kids' && (cat.includes('kid') || cat.includes('cartoon') || cat.includes('duronto') || cat.includes('disney'))) {
+        return true;
+      }
+      if (target === 'music' && (cat.includes('music') || cat.includes('song') || cat.includes('gan') || cat.includes('8xm'))) {
+        return true;
+      }
+      if (target === 'bangla' && (c.country?.toLowerCase() === 'bangladesh' || c.country?.toLowerCase() === 'bd' || cat.includes('bangla') || cat.includes('bd'))) {
+        return true;
+      }
+      if (target === 'hindi' && (c.country?.toLowerCase() === 'india' || c.country?.toLowerCase() === 'in' || cat.includes('hindi') || cat.includes('india'))) {
+        return true;
+      }
+
+      return false;
+    });
     title = `${categoryId} Channels`;
   }
 

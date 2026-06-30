@@ -9,6 +9,61 @@ interface HlsPlayerProps {
   channel: Channel;
 }
 
+const getPlayableUrl = (url: string): string => {
+  if (!url) return url;
+
+  // 1. Clean existing proxy wrappers if any to start with the pristine stream URL
+  let cleanUrl = url;
+  if (cleanUrl.startsWith('https://cors-proxy.cooks.fyi/')) {
+    cleanUrl = cleanUrl.replace('https://cors-proxy.cooks.fyi/', '');
+  }
+  if (cleanUrl.startsWith('/api/stream?url=')) {
+    cleanUrl = decodeURIComponent(cleanUrl.replace('/api/stream?url=', ''));
+  }
+  if (cleanUrl.startsWith('/api/stream/')) {
+    cleanUrl = cleanUrl.replace('/api/stream/', '');
+  }
+  if (cleanUrl.startsWith('http://localhost:3000/api/stream?url=')) {
+    cleanUrl = decodeURIComponent(cleanUrl.replace('http://localhost:3000/api/stream?url=', ''));
+  }
+  if (cleanUrl.startsWith('http://localhost:3000/api/stream/')) {
+    cleanUrl = cleanUrl.replace('http://localhost:3000/api/stream/', '');
+  }
+
+  // Double-repair collapsed slashes in case they were already collapsed in stored playlists
+  if (cleanUrl.startsWith('http:/') && !cleanUrl.startsWith('http://')) {
+    cleanUrl = 'http://' + cleanUrl.substring('http:/'.length);
+  } else if (cleanUrl.startsWith('https:/') && !cleanUrl.startsWith('https://')) {
+    cleanUrl = 'https://' + cleanUrl.substring('https:/'.length);
+  }
+
+  // 2. If it is already a secure HTTPS url, play it directly!
+  // Secure streams have no mixed-content blocks, and playing them directly avoids relative path resolution issues.
+  if (cleanUrl.startsWith('https://')) {
+    return cleanUrl;
+  }
+
+  // 3. If it is an insecure HTTP url, we MUST proxy it to prevent Mixed Content blocking.
+  // We prepend our wildcard pathname proxy "/api/stream/http://..." which preserves relative pathing perfectly.
+  // We fall back to a public CORS/HLS proxy if we are running in static client mode (e.g. Netlify / GitHub Pages)
+  if (cleanUrl.startsWith('http://')) {
+    const isLocalOrDevServer = 
+      window.location.hostname === 'localhost' || 
+      window.location.port === '3000' ||
+      window.location.hostname.includes('.run.app') || 
+      window.location.hostname.includes('ais-dev-') ||
+      window.location.hostname.includes('ais-pre-');
+
+    if (isLocalOrDevServer) {
+      return `/api/stream/${cleanUrl}`;
+    } else {
+      return `https://cors-proxy.cooks.fyi/${cleanUrl}`;
+    }
+  }
+
+  return cleanUrl;
+};
+
 export const HlsPlayer: React.FC<HlsPlayerProps> = ({ channel }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const playerContainerRef = useRef<HTMLDivElement>(null);
@@ -28,6 +83,8 @@ export const HlsPlayer: React.FC<HlsPlayerProps> = ({ channel }) => {
     setIsBuffering(true);
 
     const initPlayer = () => {
+      const playableUrl = getPlayableUrl(channel.url);
+      
       if (Hls.isSupported()) {
         hls = new Hls({
           maxLoadingDelay: 4,
@@ -35,7 +92,7 @@ export const HlsPlayer: React.FC<HlsPlayerProps> = ({ channel }) => {
           lowLatencyMode: true,
         });
 
-        hls.loadSource(channel.url);
+        hls.loadSource(playableUrl);
         hls.attachMedia(video);
 
         hls.on(Hls.Events.MANIFEST_PARSED, () => {
@@ -76,7 +133,7 @@ export const HlsPlayer: React.FC<HlsPlayerProps> = ({ channel }) => {
         });
       } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
         // Native HLS support (Safari)
-        video.src = channel.url;
+        video.src = playableUrl;
         video.addEventListener('loadedmetadata', () => {
           setIsBuffering(false);
           if (isPlaying) {

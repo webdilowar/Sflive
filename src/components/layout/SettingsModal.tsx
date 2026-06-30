@@ -13,6 +13,7 @@ export const SettingsModal = () => {
     channels,
     playlists,
     activePlaylistId,
+    activePlaylistUrl,
     addPlaylistByUrl,
     addPlaylistByFile,
     deletePlaylist,
@@ -102,10 +103,25 @@ export const SettingsModal = () => {
     }
   };
 
-  const handleSelectPreset = () => {
-    selectPlaylist('default');
-    setSuccessMessage('Preset IPTV Playlist loaded successfully!');
-    setTimeout(() => setSuccessMessage(null), 4000);
+  const handleSelectPreset = async () => {
+    const url = 'https://go.skym3u.top/2k8o.m3u';
+    const name = 'Sky IPTV Premium Selection';
+    
+    // Check if it already exists as a loaded playlist
+    const existing = playlists.find(p => p.url === url);
+    if (existing) {
+      selectPlaylist(existing.id);
+      setSuccessMessage('Switched to Sky IPTV Premium Selection!');
+      setTimeout(() => setSuccessMessage(null), 4000);
+      return;
+    }
+
+    setSuccessMessage(null);
+    const success = await addPlaylistByUrl(name, url);
+    if (success) {
+      setSuccessMessage(`Playlist "${name}" loaded and added to Your Playlists!`);
+      setTimeout(() => setSuccessMessage(null), 4000);
+    }
   };
 
   return (
@@ -353,19 +369,19 @@ export const SettingsModal = () => {
                 onClick={handleSelectPreset}
                 disabled={isLoadingPlaylist}
                 className={`w-full text-left p-3 rounded-xl border transition-all duration-200 flex items-center justify-between cursor-pointer ${
-                  activePlaylistId === 'default'
-                    ? 'bg-sflive-primary/10 border-sflive-primary/30 text-white'
+                  (activePlaylistId === 'default' || activePlaylistUrl === 'https://go.skym3u.top/2k8o.m3u')
+                    ? 'bg-sflive-primary/10 border-sflive-primary/30 text-white font-semibold'
                     : 'bg-white/2 border-white/5 text-sflive-muted hover:bg-white/5 hover:border-white/10'
                 }`}
               >
                 <div className="flex items-center gap-3 min-w-0">
-                  <Globe className={`w-5 h-5 shrink-0 ${activePlaylistId === 'default' ? 'text-sflive-primary' : 'text-sflive-muted'}`} />
+                  <Globe className={`w-5 h-5 shrink-0 ${(activePlaylistId === 'default' || activePlaylistUrl === 'https://go.skym3u.top/2k8o.m3u') ? 'text-sflive-primary' : 'text-sflive-muted'}`} />
                   <div className="truncate">
                     <div className="font-semibold text-sm text-white">Sky IPTV Premium Selection</div>
                     <div className="text-xs text-sflive-muted mt-0.5 truncate">https://go.skym3u.top/2k8o.m3u</div>
                   </div>
                 </div>
-                {activePlaylistId === 'default' && (
+                {(activePlaylistId === 'default' || activePlaylistUrl === 'https://go.skym3u.top/2k8o.m3u') && (
                   <span className="text-[10px] bg-sflive-primary/20 text-sflive-primary px-2 py-0.5 rounded-full font-bold uppercase tracking-wider shrink-0">
                     Active
                   </span>

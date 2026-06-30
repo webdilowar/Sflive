@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { useApp } from '../store/AppContext';
 import { HlsPlayer } from '../components/player/HlsPlayer';
 import { Heart, Search, PlayCircle, Tv } from 'lucide-react';
@@ -7,24 +7,58 @@ import { Channel } from '../types';
 import { ImageWithFallback } from '../components/ui/ImageWithFallback';
 
 export const LiveTV = () => {
-  const { currentChannel, setCurrentChannel, favorites, toggleFavorite, isFavorite, searchQuery, channels } = useApp();
+  const { 
+    currentChannel, 
+    setCurrentChannel, 
+    favorites, 
+    toggleFavorite, 
+    isFavorite, 
+    searchQuery, 
+    setSearchQuery, 
+    channels 
+  } = useApp();
+
+  const [selectedCategory, setSelectedCategory] = useState<string>('All');
 
   // If no channel is selected, select the first one by default
-  React.useEffect(() => {
+  useEffect(() => {
     if (!currentChannel && channels.length > 0) {
       setCurrentChannel(channels[0]);
     }
-  }, [currentChannel, setCurrentChannel]);
+  }, [currentChannel, setCurrentChannel, channels]);
 
+  // Sync category filter with selected channel's category when channel changes
+  useEffect(() => {
+    if (currentChannel && currentChannel.category) {
+      setSelectedCategory(currentChannel.category);
+    }
+  }, [currentChannel]);
+
+  // Dynamically compute unique categories from current active playlist channels
+  const categories = useMemo(() => {
+    const uniqCats = Array.from(new Set(channels.map(c => c.category).filter(Boolean)));
+    return ['All', ...uniqCats];
+  }, [channels]);
+
+  // Combined filter logic: Category + Search query
   const filteredChannels = useMemo(() => {
-    if (!searchQuery) return channels;
-    const lowerQuery = searchQuery.toLowerCase();
-    return channels.filter(
-      c => c.name.toLowerCase().includes(lowerQuery) || 
-           c.category.toLowerCase().includes(lowerQuery) ||
-           c.country.toLowerCase().includes(lowerQuery)
-    );
-  }, [searchQuery]);
+    let result = channels;
+
+    if (selectedCategory && selectedCategory !== 'All') {
+      result = result.filter(c => c.category === selectedCategory);
+    }
+
+    if (searchQuery) {
+      const lowerQuery = searchQuery.toLowerCase();
+      result = result.filter(
+        c => c.name.toLowerCase().includes(lowerQuery) || 
+             c.category.toLowerCase().includes(lowerQuery) ||
+             c.country.toLowerCase().includes(lowerQuery)
+      );
+    }
+
+    return result;
+  }, [channels, selectedCategory, searchQuery]);
 
   return (
     <div className="flex flex-col xl:flex-row h-full max-h-full">
@@ -82,14 +116,48 @@ export const LiveTV = () => {
 
       {/* Channel List Sidebar */}
       <div className="w-full xl:w-96 shrink-0 border-l border-white/5 bg-sflive-bg/90 backdrop-blur flex flex-col max-h-[500px] xl:max-h-none overflow-hidden">
-        <div className="p-4 border-b border-white/5 flex items-center justify-between sticky top-0 bg-sflive-bg z-10">
-          <h2 className="font-bold text-lg flex items-center gap-2">
-            <Tv className="w-5 h-5 text-sflive-primary" />
-            Live Channels
-          </h2>
-          <span className="text-xs bg-sflive-primary/10 text-sflive-primary px-2 py-1 rounded-full font-medium">
-            {filteredChannels.length} TV
-          </span>
+        <div className="p-4 border-b border-white/5 bg-sflive-bg space-y-3 sticky top-0 z-10">
+          <div className="flex items-center justify-between">
+            <h2 className="font-bold text-lg flex items-center gap-2 text-white">
+              <Tv className="w-5 h-5 text-sflive-primary" />
+              Live Channels
+            </h2>
+            <span className="text-xs bg-sflive-primary/10 text-sflive-primary px-2 py-0.5 rounded-full font-semibold">
+              {filteredChannels.length} TV
+            </span>
+          </div>
+
+          {/* Local Search Bar */}
+          <div className="relative">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <Search className="w-4 h-4 text-sflive-muted" />
+            </div>
+            <input
+              type="text"
+              className="block w-full pl-9 pr-3 py-2 border border-white/10 rounded-xl leading-5 bg-white/5 text-white placeholder-sflive-muted focus:outline-none focus:ring-1 focus:ring-sflive-primary focus:border-sflive-primary transition-colors text-xs"
+              placeholder="Search channels..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
+
+          {/* Horizontal Category List */}
+          <div className="flex gap-1.5 overflow-x-auto pb-1.5 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
+            {categories.map((cat) => (
+              <button
+                key={cat}
+                onClick={() => setSelectedCategory(cat)}
+                className={cn(
+                  "px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap transition-all duration-200 cursor-pointer",
+                  selectedCategory === cat
+                    ? "bg-sflive-primary text-black shadow-md shadow-sflive-primary/25 font-bold"
+                    : "bg-white/5 text-sflive-muted hover:bg-white/10 hover:text-white"
+                )}
+              >
+                {cat}
+              </button>
+            ))}
+          </div>
         </div>
         
         <div className="flex-1 overflow-y-auto p-3 space-y-2">
@@ -147,7 +215,7 @@ export const LiveTV = () => {
            ) : (
              <div className="p-8 text-center flex flex-col items-center">
                <Search className="w-8 h-8 text-sflive-muted mb-3 opacity-50" />
-               <p className="text-sflive-muted text-sm">No channels found matching "{searchQuery}"</p>
+               <p className="text-sflive-muted text-sm">No channels found</p>
              </div>
            )}
         </div>

@@ -151,11 +151,35 @@ async function startServer() {
   });
 
   // Endpoint to proxy live streams and prevent mixed content / CORS blocks in the browser
-  app.get("/api/stream", async (req, res) => {
-    const streamUrl = req.query.url as string;
+  // Supports both query parameter (/api/stream?url=...) and wildcard path (/api/stream/http://...)
+  // Wildcard path allows correct relative URL resolution inside HLS manifests (.m3u8) by the browser
+  app.get("/api/stream*", async (req, res) => {
+    let streamUrl = req.query.url as string;
+    
+    if (!streamUrl) {
+      const prefix = "/api/stream/";
+      if (req.url.startsWith(prefix)) {
+        streamUrl = req.url.substring(prefix.length);
+      }
+    }
+
     if (!streamUrl) {
       return res.status(400).send("Stream URL is required");
     }
+
+    // Repair collapsed slashes if any (e.g. "http:/example.com" -> "http://example.com")
+    if (streamUrl.startsWith("http:/") && !streamUrl.startsWith("http://")) {
+      streamUrl = "http://" + streamUrl.substring("http:/".length);
+    } else if (streamUrl.startsWith("https:/") && !streamUrl.startsWith("https://")) {
+      streamUrl = "https://" + streamUrl.substring("https:/".length);
+    }
+
+    // Decode URL if it was encoded in transit
+    try {
+      if (streamUrl.includes("%3A") || streamUrl.includes("%2F") || streamUrl.includes("%3a") || streamUrl.includes("%2f")) {
+        streamUrl = decodeURIComponent(streamUrl);
+      }
+    } catch {}
 
     try {
       const headers: Record<string, string> = {
