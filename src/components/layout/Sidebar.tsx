@@ -34,8 +34,10 @@ export const Sidebar = () => {
   const { sidebarOpen, setSidebarOpen, setSettingsOpen, playlists, activePlaylistId, channels } = useApp();
 
   const activePlaylistName = activePlaylistId === 'default'
-    ? 'SFLIVE Default'
-    : playlists.find(p => p.id === activePlaylistId)?.name || 'Custom Playlist';
+    ? 'Sky IPTV Premium'
+    : activePlaylistId === 'bd_89'
+      ? 'SFLIVE Default'
+      : playlists.find(p => p.id === activePlaylistId)?.name || 'Custom Playlist';
 
   return (
     <>

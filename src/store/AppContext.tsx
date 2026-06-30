@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Channel, Playlist } from '../types';
 import { channels as defaultChannels } from '../data/channels';
+import { premiumChannels } from '../data/premium_channels';
 
 interface AppContextType {
   channels: Channel[];
@@ -171,6 +172,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [channels, setChannels] = useState<Channel[]>(() => {
     const activeId = localStorage.getItem('sflive-active-playlist-id') || 'default';
     if (activeId === 'default') {
+      return premiumChannels;
+    }
+    if (activeId === 'bd_89') {
       return defaultChannels;
     }
     const saved = localStorage.getItem('sflive-playlists');
@@ -183,13 +187,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
       } catch {}
     }
-    return defaultChannels;
+    return premiumChannels;
   });
 
   const [currentChannel, setCurrentChannel] = useState<Channel | null>(() => {
     const activeId = localStorage.getItem('sflive-active-playlist-id') || 'default';
-    let initialChannels = defaultChannels;
-    if (activeId !== 'default') {
+    let initialChannels = premiumChannels;
+    if (activeId === 'bd_89') {
+      initialChannels = defaultChannels;
+    } else if (activeId !== 'default') {
       const saved = localStorage.getItem('sflive-playlists');
       if (saved) {
         try {
@@ -211,6 +217,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const activeId = localStorage.getItem('sflive-active-playlist-id') || 'default';
     if (activeId === 'default') {
       return 'https://go.skym3u.top/2k8o.m3u';
+    }
+    if (activeId === 'bd_89') {
+      return 'internal://bd-89';
     }
     const saved = localStorage.getItem('sflive-playlists');
     if (saved) {
@@ -409,31 +418,43 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const deletePlaylist = (id: string) => {
-    if (id === 'default') return;
+    if (id === 'default' || id === 'bd_89') return;
 
     const updatedPlaylists = playlists.filter(p => p.id !== id);
     setPlaylists(updatedPlaylists);
     localStorage.setItem('sflive-playlists', JSON.stringify(updatedPlaylists));
 
     if (activePlaylistId === id) {
-      setChannels(defaultChannels);
+      setChannels(premiumChannels);
       setActivePlaylistId('default');
       localStorage.setItem('sflive-active-playlist-id', 'default');
       setActivePlaylistUrl('https://go.skym3u.top/2k8o.m3u');
       localStorage.setItem('sflive-playlist-url', 'https://go.skym3u.top/2k8o.m3u');
-      if (defaultChannels.length > 0) {
-        setCurrentChannel(defaultChannels[0]);
+      if (premiumChannels.length > 0) {
+        setCurrentChannel(premiumChannels[0]);
       }
     }
   };
 
   const selectPlaylist = (id: string) => {
     if (id === 'default') {
-      setChannels(defaultChannels);
+      setChannels(premiumChannels);
       setActivePlaylistId('default');
       localStorage.setItem('sflive-active-playlist-id', 'default');
       setActivePlaylistUrl('https://go.skym3u.top/2k8o.m3u');
       localStorage.setItem('sflive-playlist-url', 'https://go.skym3u.top/2k8o.m3u');
+      if (premiumChannels.length > 0) {
+        setCurrentChannel(premiumChannels[0]);
+      }
+      return;
+    }
+
+    if (id === 'bd_89') {
+      setChannels(defaultChannels);
+      setActivePlaylistId('bd_89');
+      localStorage.setItem('sflive-active-playlist-id', 'bd_89');
+      setActivePlaylistUrl('internal://bd-89');
+      localStorage.setItem('sflive-playlist-url', 'internal://bd-89');
       if (defaultChannels.length > 0) {
         setCurrentChannel(defaultChannels[0]);
       }
@@ -460,6 +481,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const loadPlaylist = async (url: string): Promise<boolean> => {
     if (url === 'https://go.skym3u.top/2k8o.m3u') {
       selectPlaylist('default');
+      return true;
+    }
+    if (url === 'internal://bd-89') {
+      selectPlaylist('bd_89');
       return true;
     }
     const found = playlists.find(p => p.url === url);
