@@ -247,8 +247,9 @@ async function startServer() {
   });
 
   // Vite middleware for development
+  let vite: any = null;
   if (process.env.NODE_ENV !== "production") {
-    const vite = await createViteServer({
+    vite = await createViteServer({
       server: { middlewareMode: true },
       appType: "spa",
     });
@@ -256,10 +257,29 @@ async function startServer() {
   } else {
     const distPath = path.join(process.cwd(), "dist");
     app.use(express.static(distPath));
-    app.get("*", (req, res) => {
-      res.sendFile(path.join(distPath, "index.html"));
-    });
   }
+
+  // SPA fallback for all HTML/page requests (excluding API and files with extensions)
+  app.get("*", async (req, res, next) => {
+    if (req.path.startsWith("/api") || req.path.includes(".")) {
+      return next();
+    }
+
+    try {
+      if (process.env.NODE_ENV !== "production") {
+        const fs = await import("fs");
+        let html = fs.readFileSync(path.resolve(process.cwd(), "index.html"), "utf-8");
+        if (vite) {
+          html = await vite.transformIndexHtml(req.url, html);
+        }
+        res.status(200).set({ "Content-Type": "text/html" }).end(html);
+      } else {
+        res.sendFile(path.join(process.cwd(), "dist", "index.html"));
+      }
+    } catch (e) {
+      next(e);
+    }
+  });
 
   app.listen(PORT, "0.0.0.0", () => {
     console.log(`Server running on http://localhost:${PORT}`);
