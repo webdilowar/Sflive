@@ -156,7 +156,9 @@ export const Home = () => {
                 src={slide.image} 
                 alt={slide.title} 
                 referrerPolicy="no-referrer"
-                className="absolute inset-0 w-full h-full object-cover opacity-50 mix-blend-overlay transition-transform duration-[10000ms] ease-out scale-100 group-hover/hero:scale-105"
+                className={`absolute inset-0 w-full h-full object-cover opacity-50 mix-blend-overlay transition-transform duration-[6000ms] ease-out ${
+                  index === currentSlide ? 'scale-110' : 'scale-100'
+                }`}
               />
               
               {/* Slide Content */}

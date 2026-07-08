@@ -2,6 +2,8 @@ import React from 'react';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
 import { SettingsModal } from './SettingsModal';
+import { AuthModal } from './AuthModal';
+import { ProfileModal } from './ProfileModal';
 
 export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   return (
@@ -14,6 +16,8 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
         </main>
       </div>
       <SettingsModal />
+      <AuthModal />
+      <ProfileModal />
     </div>
   );
 };

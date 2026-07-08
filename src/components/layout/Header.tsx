@@ -2,6 +2,7 @@ import React from 'react';
 import { Menu, Search, User, Bell, ListMusic, ChevronDown, Globe, FileText, Settings } from 'lucide-react';
 import { useApp } from '../../store/AppContext';
 import { useNavigate } from 'react-router-dom';
+import { AVATARS } from './AuthModal';
 
 export const Header = () => {
   const { 
@@ -12,7 +13,10 @@ export const Header = () => {
     activePlaylistId,
     selectPlaylist,
     setSettingsOpen,
-    channels
+    channels,
+    user,
+    setAuthModalOpen,
+    setProfileModalOpen
   } = useApp();
   const navigate = useNavigate();
   const [dropdownOpen, setDropdownOpen] = React.useState(false);
@@ -232,14 +236,30 @@ export const Header = () => {
           <span className="absolute top-2 right-2.5 w-2 h-2 bg-sflive-primary rounded-full"></span>
         </button>
         <div className="w-px h-8 bg-white/10 mx-2 hidden sm:block"></div>
-        <button className="flex items-center gap-3 pl-2 pr-4 py-1.5 rounded-full hover:bg-white/5 border border-transparent hover:border-white/10 transition-colors">
-          <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-sflive-secondary to-sflive-primary flex items-center justify-center p-[2px]">
-            <div className="w-full h-full bg-sflive-bg rounded-full flex items-center justify-center">
-              <User className="w-4 h-4 text-white" />
+        {user ? (
+          <button 
+            onClick={() => setProfileModalOpen(true)}
+            className="flex items-center gap-3 pl-2 pr-4 py-1.5 rounded-full hover:bg-white/5 border border-transparent hover:border-white/10 transition-all cursor-pointer group"
+          >
+            <div className={`w-8 h-8 rounded-full bg-gradient-to-tr ${
+              (AVATARS.find(a => a.id === user.avatar) || AVATARS[0]).gradient
+            } flex items-center justify-center text-base shadow-sm border border-white/10 shrink-0 group-hover:scale-105 transition-transform`}>
+              <span>{(AVATARS.find(a => a.id === user.avatar) || AVATARS[0]).icon}</span>
             </div>
-          </div>
-          <span className="text-sm font-medium hidden sm:block">User Profile</span>
-        </button>
+            <div className="text-left hidden sm:block">
+              <div className="text-xs font-semibold text-white truncate max-w-[100px]">{user.name}</div>
+              <div className="text-[9px] text-sflive-primary font-black uppercase tracking-wider">VIP Active</div>
+            </div>
+          </button>
+        ) : (
+          <button 
+            onClick={() => setAuthModalOpen(true)}
+            className="flex items-center gap-2 pl-3.5 pr-4 py-2 rounded-xl bg-gradient-to-r from-sflive-primary to-indigo-600 hover:opacity-90 text-white text-xs font-bold transition-all shadow-md shadow-sflive-primary/10 cursor-pointer"
+          >
+            <User className="w-3.5 h-3.5" />
+            <span>Sign In / Sign Up</span>
+          </button>
+        )}
       </div>
     </header>
   );

@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { Channel, Playlist } from '../types';
+import { Channel, Playlist, UserProfile } from '../types';
 import { channels as defaultChannels } from '../data/channels';
 import { premiumChannels } from '../data/premium_channels';
 
@@ -28,6 +28,17 @@ interface AppContextType {
   addPlaylistByFile: (name: string, fileContent: string) => Promise<boolean>;
   deletePlaylist: (id: string) => void;
   selectPlaylist: (id: string) => void;
+
+  // User Authentication support
+  user: UserProfile | null;
+  authModalOpen: boolean;
+  setAuthModalOpen: (open: boolean) => void;
+  profileModalOpen: boolean;
+  setProfileModalOpen: (open: boolean) => void;
+  login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  signup: (name: string, email: string, password: string, avatar: string) => Promise<{ success: boolean; error?: string }>;
+  logout: () => void;
+  updateProfile: (name: string, avatar: string) => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -596,6 +607,115 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return addPlaylistByUrl(name, url);
   };
 
+  // User Authentication support state
+  const [user, setUser] = useState<UserProfile | null>(() => {
+    const saved = localStorage.getItem('sflive-current-user');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch {
+        return null;
+      }
+    }
+    return null;
+  });
+
+  const [authModalOpen, setAuthModalOpen] = useState(false);
+  const [profileModalOpen, setProfileModalOpen] = useState(false);
+
+  const login = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
+    const usersStr = localStorage.getItem('sflive-users') || '[]';
+    let localUsers: any[] = [];
+    try {
+      localUsers = JSON.parse(usersStr);
+    } catch {}
+
+    const foundUser = localUsers.find(u => u.email.toLowerCase() === email.toLowerCase());
+    if (!foundUser) {
+      return { success: false, error: 'User not found. Please sign up.' };
+    }
+
+    if (foundUser.password !== password) {
+      return { success: false, error: 'Invalid password.' };
+    }
+
+    const userProfile: UserProfile = {
+      name: foundUser.name,
+      email: foundUser.email,
+      avatar: foundUser.avatar || 'avatar_1',
+      isPremium: true,
+      memberSince: foundUser.memberSince || new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long' })
+    };
+
+    setUser(userProfile);
+    localStorage.setItem('sflive-current-user', JSON.stringify(userProfile));
+    return { success: true };
+  };
+
+  const signup = async (name: string, email: string, password: string, avatar: string): Promise<{ success: boolean; error?: string }> => {
+    const usersStr = localStorage.getItem('sflive-users') || '[]';
+    let localUsers: any[] = [];
+    try {
+      localUsers = JSON.parse(usersStr);
+    } catch {}
+
+    const exists = localUsers.some(u => u.email.toLowerCase() === email.toLowerCase());
+    if (exists) {
+      return { success: false, error: 'Email already registered. Please sign in.' };
+    }
+
+    const memberSince = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long' });
+    const newUser = {
+      name: name.trim(),
+      email: email.trim().toLowerCase(),
+      password,
+      avatar,
+      memberSince
+    };
+
+    localUsers.push(newUser);
+    localStorage.setItem('sflive-users', JSON.stringify(localUsers));
+
+    const userProfile: UserProfile = {
+      name: newUser.name,
+      email: newUser.email,
+      avatar: newUser.avatar,
+      isPremium: true,
+      memberSince: newUser.memberSince
+    };
+
+    setUser(userProfile);
+    localStorage.setItem('sflive-current-user', JSON.stringify(userProfile));
+    return { success: true };
+  };
+
+  const logout = () => {
+    setUser(null);
+    localStorage.removeItem('sflive-current-user');
+  };
+
+  const updateProfile = (name: string, avatar: string) => {
+    if (!user) return;
+    const updated = {
+      ...user,
+      name: name.trim(),
+      avatar
+    };
+    setUser(updated);
+    localStorage.setItem('sflive-current-user', JSON.stringify(updated));
+
+    const usersStr = localStorage.getItem('sflive-users') || '[]';
+    try {
+      const localUsers = JSON.parse(usersStr);
+      const index = localUsers.findIndex((u: any) => u.email.toLowerCase() === user.email.toLowerCase());
+      if (index !== -1) {
+        localUsers[index].name = name.trim();
+        localUsers[index].avatar = avatar;
+        localStorage.setItem('sflive-users', JSON.stringify(localUsers));
+      }
+    } catch {}
+  };
+
   return (
     <AppContext.Provider
       value={{
@@ -621,6 +741,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         addPlaylistByFile,
         deletePlaylist,
         selectPlaylist,
+        user,
+        authModalOpen,
+        setAuthModalOpen,
+        profileModalOpen,
+        setProfileModalOpen,
+        login,
+        signup,
+        logout,
+        updateProfile,
       }}
     >
       {children}

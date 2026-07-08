@@ -28,3 +28,11 @@ export type Category =
   | 'Hindi'
   | 'English'
   | 'Favorites';
+
+export interface UserProfile {
+  name: string;
+  email: string;
+  avatar: string;
+  isPremium: boolean;
+  memberSince: string;
+}
