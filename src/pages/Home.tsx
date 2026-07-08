@@ -1,13 +1,19 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Play, TrendingUp, Star, Tv } from 'lucide-react';
+import { Play, TrendingUp, Star, Tv, ChevronLeft, ChevronRight, Trophy, Calendar } from 'lucide-react';
 import { useApp } from '../store/AppContext';
 import { Channel } from '../types';
 import { ImageWithFallback } from '../components/ui/ImageWithFallback';
 
+// Import custom generated FIFA 2026 hero images
+const fifaStadiumImg = new URL('../assets/images/fifa_stadium_2026_1783517058030.jpg', import.meta.url).href;
+const footballerActionImg = new URL('../assets/images/footballer_action_2026_1783517082654.jpg', import.meta.url).href;
+const worldCupGloryImg = new URL('../assets/images/world_cup_glory_2026_1783517101519.jpg', import.meta.url).href;
+
 export const Home = () => {
   const navigate = useNavigate();
   const { setCurrentChannel, channels } = useApp();
+  const [currentSlide, setCurrentSlide] = useState(0);
 
   const handlePlayChannel = (channel: Channel) => {
     setCurrentChannel(channel);
@@ -28,6 +34,76 @@ export const Home = () => {
     { title: 'Music', data: channels.filter(c => c.category === 'Music') }
   ];
 
+  // FIFA 2026 Hero Slides setup
+  const slides = [
+    {
+      id: 1,
+      image: fifaStadiumImg,
+      badge: { text: 'FIFA WORLD CUP 2026 • UNITED', icon: Trophy, color: 'text-amber-400 bg-amber-400/10 border-amber-400/20' },
+      title: 'Experience FIFA 2026 Live',
+      description: 'The countdown is on! Stream all 104 matches live from USA, Canada, and Mexico on SFLIVE. Catch every historic moment in crystal-clear ultra low-latency.',
+      actionText1: 'Watch Live Sports',
+      actionType1: 'navigate',
+      actionValue1: '/category/Sports',
+      actionText2: 'Browse Schedules',
+      actionType2: 'navigate',
+      actionValue2: '/live'
+    },
+    {
+      id: 2,
+      image: footballerActionImg,
+      badge: { text: 'SUPERSTARS IN FOCUS', icon: Star, color: 'text-sflive-primary bg-sflive-primary/10 border-sflive-primary/20' },
+      title: 'Follow Your Favorite Players',
+      description: 'Watch the worlds elite talents including Kylian Mbappé, Erling Haaland, and Lionel Messi battle on soccer’s biggest stage. Stay closer to the actions.',
+      actionText1: 'Watch Highlights',
+      actionType1: 'play',
+      actionValue1: 'sports', // fallback to sports
+      actionText2: 'Explore Categories',
+      actionType2: 'navigate',
+      actionValue2: '/live'
+    },
+    {
+      id: 3,
+      image: worldCupGloryImg,
+      badge: { text: 'ROAD TO THE FINALS', icon: Calendar, color: 'text-sflive-secondary bg-sflive-secondary/10 border-sflive-secondary/20' },
+      title: 'NYNJ MetLife Stadium Grand Finale',
+      description: 'Witness the journey from group stage drama to crowning the world champions. Feel every stadium roar, penalty shootout, and incredible match-winner.',
+      actionText1: 'Watch Live Now',
+      actionType1: 'play',
+      actionValue1: 'default',
+      actionText2: 'Sports Selection',
+      actionType2: 'navigate',
+      actionValue2: '/category/Sports'
+    }
+  ];
+
+  // Auto transition slides
+  useEffect(() => {
+    const slideTimer = setInterval(() => {
+      setCurrentSlide((prev) => (prev + 1) % slides.length);
+    }, 6000);
+    return () => clearInterval(slideTimer);
+  }, [slides.length]);
+
+  const handleNextSlide = () => {
+    setCurrentSlide((prev) => (prev + 1) % slides.length);
+  };
+
+  const handlePrevSlide = () => {
+    setCurrentSlide((prev) => (prev - 1 + slides.length) % slides.length);
+  };
+
+  const handleSlideAction = (type: string, value: string) => {
+    if (type === 'navigate') {
+      navigate(value);
+    } else if (type === 'play') {
+      const sportsChannel = channels.find(c => c.category === 'Sports') || channels[0];
+      if (sportsChannel) {
+        handlePlayChannel(sportsChannel);
+      }
+    }
+  };
+
   const ChannelCard = ({ channel, landscape = false }: { channel: Channel, landscape?: boolean }) => (
     <div 
       onClick={() => handlePlayChannel(channel)}
@@ -46,7 +122,7 @@ export const Home = () => {
 
       <div className="absolute inset-0 p-6 flex flex-col justify-end z-20">
          <div className="w-12 h-12 flex-shrink-0 bg-white/10 backdrop-blur rounded p-1 mb-3 self-start shadow-md object-contain border border-white/10 overflow-hidden">
-           <ImageWithFallback src={channel.logo} alt={channel.name} fallbackName={channel.name} className="w-full h-full object-contain" />
+            <ImageWithFallback src={channel.logo} alt={channel.name} fallbackName={channel.name} className="w-full h-full object-contain" />
          </div>
          <h3 className="font-bold text-lg text-white leading-tight mb-1 group-hover:text-sflive-primary transition-colors">{channel.name}</h3>
          <p className="text-xs text-sflive-muted flex items-center gap-2">
@@ -60,35 +136,94 @@ export const Home = () => {
   return (
     <div className="p-6 pb-24 lg:p-10 space-y-12">
       
-      {/* Hero Section */}
-      <section className="relative rounded-2xl overflow-hidden glass border border-transparent">
-        <div className="absolute inset-0 bg-gradient-to-r from-sflive-bg via-sflive-bg/80 to-transparent z-10"></div>
-        <img 
-          src="https://images.unsplash.com/photo-1540747913346-19e32dc3e97e?q=80&w=2505&auto=format&fit=crop" 
-          alt="Featured TV" 
-          className="absolute inset-0 w-full h-full object-cover opacity-40 mix-blend-overlay"
-        />
-        <div className="relative z-20 p-8 lg:p-14 max-w-2xl flex flex-col justify-center h-full">
-          <span className="text-xs font-bold tracking-widest text-sflive-primary uppercase mb-3 flex items-center gap-2">
-             <Star className="w-4 h-4" /> Featured Pick
-          </span>
-          <h1 className="text-4xl lg:text-6xl font-extrabold tracking-tight mb-4 text-white">Experience Live Sports Like Never Before</h1>
-          <p className="text-lg text-sflive-muted mb-8 leading-relaxed">Watch Red Bull TV, Fubo Sports, and top-tier global sports instantly on SFLIVE without any buffer.</p>
-          <div className="flex items-center gap-4">
-             <button 
-               onClick={() => handlePlayChannel(channels.find(c => c.id === 'red-bull-tv') || channels[0])}
-               className="bg-gradient-to-r from-sflive-primary to-sflive-secondary text-white px-8 py-3.5 rounded-xl font-bold flex items-center gap-3 hover:scale-105 transition-transform duration-200 shadow-lg shadow-sflive-primary/30"
-             >
-               <Play className="w-5 h-5 fill-current" />
-               Watch Now
-             </button>
-             <button 
-               onClick={() => navigate('/category/Sports')}
-               className="glass px-8 py-3.5 rounded-xl font-medium text-white hover:bg-white/10 transition-colors"
-             >
-               More Sports
-             </button>
-          </div>
+      {/* Hero Slider Section */}
+      <section className="relative rounded-2xl overflow-hidden glass border border-white/5 h-[420px] sm:h-[480px] group/hero">
+        {slides.map((slide, index) => {
+          const BadgeIcon = slide.badge.icon;
+          return (
+            <div
+              key={slide.id}
+              className={`absolute inset-0 transition-all duration-1000 ease-in-out ${
+                index === currentSlide 
+                  ? 'opacity-100 translate-x-0 scale-100 pointer-events-auto z-10' 
+                  : 'opacity-0 translate-x-8 scale-95 pointer-events-none z-0'
+              }`}
+            >
+              {/* Image background with modern dark gradients */}
+              <div className="absolute inset-0 bg-gradient-to-r from-sflive-bg via-sflive-bg/75 to-transparent z-10"></div>
+              <div className="absolute inset-0 bg-gradient-to-t from-sflive-bg via-transparent to-transparent z-10 opacity-60"></div>
+              <img 
+                src={slide.image} 
+                alt={slide.title} 
+                referrerPolicy="no-referrer"
+                className="absolute inset-0 w-full h-full object-cover opacity-50 mix-blend-overlay transition-transform duration-[10000ms] ease-out scale-100 group-hover/hero:scale-105"
+              />
+              
+              {/* Slide Content */}
+              <div className="relative z-20 p-8 lg:p-14 max-w-2xl flex flex-col justify-center h-full">
+                <span className={`inline-flex items-center gap-1.5 text-xs font-bold tracking-wider uppercase px-2.5 py-1 rounded-full border mb-4 self-start ${slide.badge.color}`}>
+                  <BadgeIcon className="w-3.5 h-3.5" />
+                  {slide.badge.text}
+                </span>
+                
+                <h1 className="text-3xl lg:text-5xl font-extrabold tracking-tight mb-4 text-white leading-tight">
+                  {slide.title}
+                </h1>
+                
+                <p className="text-sm sm:text-base text-sflive-muted mb-8 leading-relaxed max-w-xl">
+                  {slide.description}
+                </p>
+                
+                <div className="flex items-center gap-4 flex-wrap">
+                  <button 
+                    onClick={() => handleSlideAction(slide.actionType1, slide.actionValue1)}
+                    className="bg-gradient-to-r from-sflive-primary to-sflive-secondary text-white px-6 py-3 rounded-xl font-bold flex items-center gap-2.5 hover:scale-105 transition-transform duration-200 cursor-pointer shadow-lg shadow-sflive-primary/20"
+                  >
+                    <Play className="w-4.5 h-4.5 fill-current" />
+                    {slide.actionText1}
+                  </button>
+                  <button 
+                    onClick={() => handleSlideAction(slide.actionType2, slide.actionValue2)}
+                    className="glass px-6 py-3 rounded-xl font-medium text-white hover:bg-white/10 transition-colors cursor-pointer border border-white/10"
+                  >
+                    {slide.actionText2}
+                  </button>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+
+        {/* Manual Arrow Controls (Left/Right) */}
+        <button
+          onClick={handlePrevSlide}
+          className="absolute left-4 top-1/2 -translate-y-1/2 z-20 w-11 h-11 rounded-full glass border border-white/10 flex items-center justify-center text-white/70 hover:text-white hover:bg-white/10 hover:scale-105 transition-all duration-200 opacity-0 group-hover/hero:opacity-100 cursor-pointer"
+          aria-label="Previous Slide"
+        >
+          <ChevronLeft className="w-5 h-5" />
+        </button>
+        <button
+          onClick={handleNextSlide}
+          className="absolute right-4 top-1/2 -translate-y-1/2 z-20 w-11 h-11 rounded-full glass border border-white/10 flex items-center justify-center text-white/70 hover:text-white hover:bg-white/10 hover:scale-105 transition-all duration-200 opacity-0 group-hover/hero:opacity-100 cursor-pointer"
+          aria-label="Next Slide"
+        >
+          <ChevronRight className="w-5 h-5" />
+        </button>
+
+        {/* Bullet Indicator Dots */}
+        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2.5 bg-black/30 backdrop-blur-md px-3.5 py-2 rounded-full border border-white/5">
+          {slides.map((_, index) => (
+            <button
+              key={index}
+              onClick={() => setCurrentSlide(index)}
+              className={`h-2.5 rounded-full transition-all duration-300 cursor-pointer ${
+                index === currentSlide 
+                  ? 'w-6 bg-sflive-primary' 
+                  : 'w-2.5 bg-white/30 hover:bg-white/50'
+              }`}
+              aria-label={`Go to slide ${index + 1}`}
+            />
+          ))}
         </div>
       </section>
 
