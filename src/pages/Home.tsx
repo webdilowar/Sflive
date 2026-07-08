@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Play, TrendingUp, Star, Tv, ChevronLeft, ChevronRight, Trophy, Calendar } from 'lucide-react';
+import { motion } from 'motion/react';
 import { useApp } from '../store/AppContext';
 import { Channel } from '../types';
 import { ImageWithFallback } from '../components/ui/ImageWithFallback';
@@ -140,29 +141,35 @@ export const Home = () => {
       <section className="relative rounded-2xl overflow-hidden glass border border-white/5 h-[420px] sm:h-[480px] group/hero">
         {slides.map((slide, index) => {
           const BadgeIcon = slide.badge.icon;
+          const isActive = index === currentSlide;
           return (
             <div
               key={slide.id}
-              className={`absolute inset-0 transition-all duration-1000 ease-in-out ${
-                index === currentSlide 
-                  ? 'opacity-100 translate-x-0 scale-100 pointer-events-auto z-10' 
-                  : 'opacity-0 translate-x-8 scale-95 pointer-events-none z-0'
+              className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${
+                isActive 
+                  ? 'opacity-100 pointer-events-auto z-10' 
+                  : 'opacity-0 pointer-events-none z-0'
               }`}
             >
               {/* Image background with modern dark gradients */}
               <div className="absolute inset-0 bg-gradient-to-r from-sflive-bg via-sflive-bg/75 to-transparent z-10"></div>
               <div className="absolute inset-0 bg-gradient-to-t from-sflive-bg via-transparent to-transparent z-10 opacity-60"></div>
-              <img 
+              
+              <motion.img 
+                animate={isActive ? { scale: 1.15, opacity: 0.5 } : { scale: 1.0, opacity: 0 }}
+                transition={{ duration: isActive ? 6 : 0.8, ease: "easeOut" }}
                 src={slide.image} 
                 alt={slide.title} 
                 referrerPolicy="no-referrer"
-                className={`absolute inset-0 w-full h-full object-cover opacity-50 mix-blend-overlay transition-transform duration-[6000ms] ease-out ${
-                  index === currentSlide ? 'scale-110' : 'scale-100'
-                }`}
+                className="absolute inset-0 w-full h-full object-cover mix-blend-overlay"
               />
               
-              {/* Slide Content */}
-              <div className="relative z-20 p-8 lg:p-14 max-w-2xl flex flex-col justify-center h-full">
+              {/* Slide Content with premium stagged slide/fade entrance */}
+              <motion.div 
+                animate={isActive ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
+                transition={{ duration: 0.8, delay: isActive ? 0.2 : 0, ease: "easeOut" }}
+                className="relative z-20 p-8 lg:p-14 max-w-2xl flex flex-col justify-center h-full"
+              >
                 <span className={`inline-flex items-center gap-1.5 text-xs font-bold tracking-wider uppercase px-2.5 py-1 rounded-full border mb-4 self-start ${slide.badge.color}`}>
                   <BadgeIcon className="w-3.5 h-3.5" />
                   {slide.badge.text}
@@ -191,7 +198,7 @@ export const Home = () => {
                     {slide.actionText2}
                   </button>
                 </div>
-              </div>
+              </motion.div>
             </div>
           );
         })}

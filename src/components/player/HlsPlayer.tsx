@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import Hls from 'hls.js';
-import { Play, Pause, Volume2, VolumeX, Maximize, PictureInPicture, AlertTriangle, Loader2 } from 'lucide-react';
+import { Play, Pause, Volume1, Volume2, VolumeX, Maximize, PictureInPicture, AlertTriangle, Loader2 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { Channel } from '../../types';
 import { ImageWithFallback } from '../ui/ImageWithFallback';
@@ -68,11 +68,28 @@ export const HlsPlayer: React.FC<HlsPlayerProps> = ({ channel }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const playerContainerRef = useRef<HTMLDivElement>(null);
   const [isPlaying, setIsPlaying] = useState(true);
-  const [isMuted, setIsMuted] = useState(false);
+  const [volume, setVolume] = useState<number>(() => {
+    const saved = localStorage.getItem('sflive-player-volume');
+    return saved ? parseFloat(saved) : 1;
+  });
+  const [isMuted, setIsMuted] = useState<boolean>(() => {
+    const saved = localStorage.getItem('sflive-player-muted');
+    return saved === 'true';
+  });
   const [showControls, setShowControls] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isBuffering, setIsBuffering] = useState(true);
   let hideControlsTimeout: NodeJS.Timeout;
+
+  // Sync state values directly to video element properties without rebuilding player stream
+  useEffect(() => {
+    if (videoRef.current) {
+      videoRef.current.volume = volume;
+      videoRef.current.muted = isMuted;
+    }
+    localStorage.setItem('sflive-player-volume', volume.toString());
+    localStorage.setItem('sflive-player-muted', isMuted.toString());
+  }, [volume, isMuted]);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -188,9 +205,20 @@ export const HlsPlayer: React.FC<HlsPlayerProps> = ({ channel }) => {
   };
 
   const toggleMute = () => {
-    if (videoRef.current) {
-      videoRef.current.muted = !videoRef.current.muted;
-      setIsMuted(videoRef.current.muted);
+    const newMuted = !isMuted;
+    setIsMuted(newMuted);
+    if (!newMuted && volume === 0) {
+      setVolume(0.5);
+    }
+  };
+
+  const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = parseFloat(e.target.value);
+    setVolume(val);
+    if (val > 0) {
+      setIsMuted(false);
+    } else {
+      setIsMuted(true);
     }
   };
 
@@ -247,6 +275,15 @@ export const HlsPlayer: React.FC<HlsPlayerProps> = ({ channel }) => {
           e.preventDefault();
           toggleFullscreen();
           break;
+        case 'arrowup':
+          e.preventDefault();
+          setVolume(prev => Math.min(1, prev + 0.05));
+          setIsMuted(false);
+          break;
+        case 'arrowdown':
+          e.preventDefault();
+          setVolume(prev => Math.max(0, prev - 0.05));
+          break;
       }
     };
 
@@ -255,7 +292,7 @@ export const HlsPlayer: React.FC<HlsPlayerProps> = ({ channel }) => {
       clearTimeout(hideControlsTimeout);
       window.removeEventListener('keydown', handleKeyDown);
     }
-  }, [isPlaying, isMuted]); // Note: In a real app we'd use Refs for state in event listeners or stable handlers, here we just re-bind.
+  }, [isPlaying, isMuted, volume]); // Note: In a real app we'd use Refs for state in event listeners or stable handlers, here we just re-bind.
 
   return (
     <div 
@@ -302,9 +339,29 @@ export const HlsPlayer: React.FC<HlsPlayerProps> = ({ channel }) => {
              <button onClick={togglePlay} className="p-2 hover:bg-white/10 rounded-full transition-colors text-white">
                 {isPlaying ? <Pause className="w-6 h-6" /> : <Play className="w-6 h-6" />}
              </button>
-             <button onClick={toggleMute} className="p-2 hover:bg-white/10 rounded-full transition-colors text-white">
-                {isMuted ? <VolumeX className="w-6 h-6 text-red-500" /> : <Volume2 className="w-6 h-6" />}
-             </button>
+             <div className="flex items-center gap-1.5">
+               <button onClick={toggleMute} className="p-2 hover:bg-white/10 rounded-full transition-colors text-white cursor-pointer" title="Mute/Unmute">
+                  {isMuted || volume === 0 ? (
+                    <VolumeX className="w-6 h-6 text-red-500" />
+                  ) : volume < 0.5 ? (
+                    <Volume1 className="w-6 h-6" />
+                  ) : (
+                    <Volume2 className="w-6 h-6" />
+                  )}
+               </button>
+               
+               <input
+                 type="range"
+                 min="0"
+                 max="1"
+                 step="0.05"
+                 value={isMuted ? 0 : volume}
+                 onChange={handleVolumeChange}
+                 className="w-16 sm:w-20 h-1 bg-white/20 rounded-lg appearance-none cursor-pointer accent-sflive-primary"
+                 title="Volume Slider"
+                 aria-label="Volume Slider"
+               />
+             </div>
              
              {/* Channel Info embedded in player controls */}
              <div className="ml-2 border-l border-white/20 pl-4 flex items-center gap-3">
