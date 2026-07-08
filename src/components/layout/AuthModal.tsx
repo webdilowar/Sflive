@@ -14,12 +14,13 @@ export const AVATARS = [
 
 export const AuthModal = () => {
   const { authModalOpen, setAuthModalOpen, login, signup } = useApp();
-  const [activeTab, setActiveTab] = useState<'signin' | 'signup'>('signup');
+  const [activeTab, setActiveTab] = useState<'signin' | 'signup' | 'forgot'>('signup');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [selectedAvatar, setSelectedAvatar] = useState('avatar_1');
   const [error, setError] = useState<string | null>(null);
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
   if (!authModalOpen) return null;
@@ -27,11 +28,17 @@ export const AuthModal = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setSuccessMsg(null);
 
     const trimmedEmail = email.trim();
     const trimmedPassword = password.trim();
 
-    if (!trimmedEmail || !trimmedPassword) {
+    if (!trimmedEmail) {
+      setError('Please enter your email.');
+      return;
+    }
+
+    if (activeTab !== 'forgot' && !trimmedPassword) {
       setError('Please fill out all required fields.');
       return;
     }
@@ -44,7 +51,21 @@ export const AuthModal = () => {
     setIsLoading(true);
 
     try {
-      if (activeTab === 'signup') {
+      if (activeTab === 'forgot') {
+        const usersStr = localStorage.getItem('sflive-users') || '[]';
+        let localUsers: any[] = [];
+        try {
+          localUsers = JSON.parse(usersStr);
+        } catch {}
+
+        const foundUser = localUsers.find(u => u.email.toLowerCase() === trimmedEmail.toLowerCase());
+        if (foundUser) {
+          setSuccessMsg(`Account recovery check passed! A secure recovery message was triggered for "${foundUser.email}". Your registered password is: "${foundUser.password}". You can now sign in!`);
+        } else {
+          // If no local storage user, give a helpful fallback simulation message.
+          setSuccessMsg(`Simulated Reset Sent! We dispatched a premium recovery token link to "${trimmedEmail}". Please check your simulated inbox or register a new VIP profile.`);
+        }
+      } else if (activeTab === 'signup') {
         const res = await signup(name, trimmedEmail, trimmedPassword, selectedAvatar);
         if (res.success) {
           setAuthModalOpen(false);
@@ -74,6 +95,7 @@ export const AuthModal = () => {
     setPassword('');
     setSelectedAvatar('avatar_1');
     setError(null);
+    setSuccessMsg(null);
   };
 
   return (
@@ -112,7 +134,11 @@ export const AuthModal = () => {
               <Sparkles className="w-3 h-3 text-amber-300" /> SFLIVE VIP Arena
             </span>
             <h2 className="text-2xl font-black text-white tracking-tight">
-              {activeTab === 'signup' ? 'Create Free SFLIVE Account' : 'Welcome Back Elite Streamer'}
+              {activeTab === 'signup' 
+                ? 'Create Free SFLIVE Account' 
+                : activeTab === 'forgot'
+                  ? 'VIP Password Recovery'
+                  : 'Welcome Back Elite Streamer'}
             </h2>
             <p className="text-xs text-white/85 mt-1">
               Unlock crystal clear high-definition soccer, low-latency live streams, and customized sports hubs.
@@ -127,6 +153,7 @@ export const AuthModal = () => {
                 onClick={() => {
                   setActiveTab('signup');
                   setError(null);
+                  setSuccessMsg(null);
                 }}
                 className={`flex-1 py-2 text-center text-xs font-bold rounded-lg transition-all duration-200 cursor-pointer ${
                   activeTab === 'signup'
@@ -140,9 +167,10 @@ export const AuthModal = () => {
                 onClick={() => {
                   setActiveTab('signin');
                   setError(null);
+                  setSuccessMsg(null);
                 }}
                 className={`flex-1 py-2 text-center text-xs font-bold rounded-lg transition-all duration-200 cursor-pointer ${
-                  activeTab === 'signin'
+                  activeTab === 'signin' || activeTab === 'forgot'
                     ? 'bg-gradient-to-r from-sflive-primary to-indigo-600 text-white shadow-md'
                     : 'text-sflive-muted hover:text-white'
                 }`}
@@ -160,6 +188,18 @@ export const AuthModal = () => {
               >
                 <AlertCircle className="w-4 h-4 shrink-0" />
                 <p>{error}</p>
+              </motion.div>
+            )}
+
+            {/* Success banner */}
+            {successMsg && (
+              <motion.div
+                initial={{ opacity: 0, y: -5 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex gap-2.5 text-xs text-emerald-400"
+              >
+                <Sparkles className="w-4 h-4 shrink-0 text-amber-300 mt-0.5" />
+                <p className="leading-relaxed">{successMsg}</p>
               </motion.div>
             )}
 
@@ -207,24 +247,41 @@ export const AuthModal = () => {
               </div>
 
               {/* Password Field */}
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-bold text-sflive-primary uppercase tracking-wider block">
-                  Secure Password
-                </label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <Lock className="w-4 h-4 text-sflive-muted" />
+              {activeTab !== 'forgot' && (
+                <div className="space-y-1.5">
+                  <div className="flex justify-between items-center">
+                    <label className="text-[10px] font-bold text-sflive-primary uppercase tracking-wider block">
+                      Secure Password
+                    </label>
+                    {activeTab === 'signin' && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setActiveTab('forgot');
+                          setError(null);
+                          setSuccessMsg(null);
+                        }}
+                        className="text-[10px] text-sflive-primary hover:underline hover:text-sflive-secondary transition-all cursor-pointer font-bold uppercase tracking-wider"
+                      >
+                        Forgot?
+                      </button>
+                    )}
                   </div>
-                  <input
-                    type="password"
-                    required
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="••••••••"
-                    className="block w-full pl-10 pr-3 py-2.5 border border-white/10 rounded-xl bg-white/2 text-white placeholder-sflive-muted focus:outline-none focus:ring-1 focus:ring-sflive-primary focus:border-sflive-primary transition-colors text-sm"
-                  />
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <Lock className="w-4 h-4 text-sflive-muted" />
+                    </div>
+                    <input
+                      type="password"
+                      required
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="••••••••"
+                      className="block w-full pl-10 pr-3 py-2.5 border border-white/10 rounded-xl bg-white/2 text-white placeholder-sflive-muted focus:outline-none focus:ring-1 focus:ring-sflive-primary focus:border-sflive-primary transition-colors text-sm"
+                    />
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* Avatar Selector (Only on Signup) */}
               {activeTab === 'signup' && (
@@ -264,10 +321,30 @@ export const AuthModal = () => {
                 className="w-full bg-gradient-to-r from-sflive-primary to-sflive-secondary text-white font-bold py-3 rounded-xl hover:opacity-90 transition-all duration-200 cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2 text-sm mt-6 shadow-lg shadow-sflive-primary/20"
               >
                 <span>
-                  {activeTab === 'signup' ? 'Create My Account' : 'Sign In to Arena'}
+                  {activeTab === 'signup' 
+                    ? 'Create My Account' 
+                    : activeTab === 'forgot'
+                      ? 'Recover Password'
+                      : 'Sign In to Arena'}
                 </span>
                 <ArrowRight className="w-4 h-4" />
               </button>
+
+              {activeTab === 'forgot' && (
+                <div className="text-center pt-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveTab('signin');
+                      setError(null);
+                      setSuccessMsg(null);
+                    }}
+                    className="text-xs text-sflive-primary hover:underline hover:text-sflive-secondary transition-all cursor-pointer font-bold"
+                  >
+                    Back to Sign In
+                  </button>
+                </div>
+              )}
             </form>
 
             <div className="text-center text-[10px] text-sflive-muted mt-2">
